@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulación Almacén - Sincronización de Hilos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: radial-gradient(circle at top center, #1e112d 0%, #0d0714 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(25, 17, 39, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(139, 92, 246, 0.15);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+        .glass-inner {
+            background: rgba(15, 10, 25, 0.6);
+            border: 1px solid rgba(139, 92, 246, 0.1);
+        }
+    </style>
+</head>
+<body class="p-6 lg:p-10">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Encabezado -->
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl lg:text-4xl font-extrabold tracking-tight text-white">
+                Control de Almacen <span class="text-purple-400 font-light">// Hilos y Concurrencia</span>
+            </h1>
+            <p class="text-purple-300/70 text-sm mt-2">
+                Simulacion operativa: Manejo de pasillos con semaforos y estaciones de carga por exclusion mutua.
+            </p>
+        </header>
+
+        <!-- Contenedor Principal en Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Panel Izquierdo: Flota de Montacargas -->
+            <div class="glass-card rounded-3xl p-6 lg:p-8 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b border-purple-900/40">
+                        <div>
+                            <h2 class="text-lg font-bold text-white tracking-wide">Flota Activa</h2>
+                            <p class="text-xs text-purple-400/80">Procesos concurrentes en ejecucion</p>
+                        </div>
+                        <button onclick="iniciarSimulacion()" id="btn-iniciar" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold px-5 py-2.5 rounded-2xl shadow-lg shadow-purple-900/50 transition-all duration-200 cursor-pointer active:scale-95 text-sm tracking-wide">
+                            Iniciar Simulacion
+                        </button>
+                    </div>
+
+                    <!-- Lista de Montacargas -->
+                    <div class="space-y-3.5" id="lista-montacargas">
+                        <div class="glass-inner p-4 rounded-2xl flex items-center justify-between transition-all duration-300" id="card-m-1">
+                            <div class="flex items-center space-x-3.5">
+                                <div class="w-3 h-3 rounded-full bg-slate-600 shadow-sm indicator-dot"></div>
+                                <div>
+                                    <h4 class="font-bold text-slate-100 text-sm">Montacargas #1</h4>
+                                    <p class="text-xs text-purple-300/60 estado-txt">Inactivo</p>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 text-xs font-semibold rounded-xl bg-purple-950/80 text-purple-300 border border-purple-800/40 badge-estado">Inactivo</span>
+                        </div>
+
+                        <div class="glass-inner p-4 rounded-2xl flex items-center justify-between transition-all duration-300" id="card-m-2">
+                            <div class="flex items-center space-x-3.5">
+                                <div class="w-3 h-3 rounded-full bg-slate-600 shadow-sm indicator-dot"></div>
+                                <div>
+                                    <h4 class="font-bold text-slate-100 text-sm">Montacargas #2</h4>
+                                    <p class="text-xs text-purple-300/60 estado-txt">Inactivo</p>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 text-xs font-semibold rounded-xl bg-purple-950/80 text-purple-300 border border-purple-800/40 badge-estado">Inactivo</span>
+                        </div>
+
+                        <div class="glass-inner p-4 rounded-2xl flex items-center justify-between transition-all duration-300" id="card-m-3">
+                            <div class="flex items-center space-x-3.5">
+                                <div class="w-3 h-3 rounded-full bg-slate-600 shadow-sm indicator-dot"></div>
+                                <div>
+                                    <h4 class="font-bold text-slate-100 text-sm">Montacargas #3</h4>
+                                    <p class="text-xs text-purple-300/60 estado-txt">Inactivo</p>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 text-xs font-semibold rounded-xl bg-purple-950/80 text-purple-300 border border-purple-800/40 badge-estado">Inactivo</span>
+                        </div>
+
+                        <div class="glass-inner p-4 rounded-2xl flex items-center justify-between transition-all duration-300" id="card-m-4">
+                            <div class="flex items-center space-x-3.5">
+                                <div class="w-3 h-3 rounded-full bg-slate-600 shadow-sm indicator-dot"></div>
+                                <div>
+                                    <h4 class="font-bold text-slate-100 text-sm">Montacargas #4</h4>
+                                    <p class="text-xs text-purple-300/60 estado-txt">Inactivo</p>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 text-xs font-semibold rounded-xl bg-purple-950/80 text-purple-300 border border-purple-800/40 badge-estado">Inactivo</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-4 border-t border-purple-900/30 text-[11px] text-purple-400/50 text-center uppercase tracking-wider font-medium">
+                    Sistemas Operativos // Practica de Concurrencia
+                </div>
+            </div>
+
+            <!-- Panel Derecho: Consola de Procesos -->
+            <div class="glass-card rounded-3xl p-6 lg:p-8 flex flex-col">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-purple-900/40">
+                    <h2 class="text-lg font-bold text-white tracking-wide">Terminal de Hilos</h2>
+                    <div class="flex space-x-1.5">
+                        <div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></div>
+                    </div>
+                </div>
+                <div id="console" class="bg-[#08040d] text-purple-300/90 font-mono text-xs p-5 rounded-2xl h-[340px] overflow-y-auto shadow-inner border border-purple-950 space-y-1.5 leading-relaxed">
+                    <span class="text-purple-500/60">$ Sistema listo. Esperando señal del usuario para disparar la ejecucion paralela...</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Pestaña Inferior de Explicación en Vivo -->
+        <div class="mt-8 bg-gradient-to-r from-[#170c24] to-[#0e0617] border border-purple-800/30 rounded-3xl p-6 lg:p-7 shadow-2xl relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
+            <h3 class="text-xs font-bold text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                Explicacion del proceso actual:
+            </h3>
+            <p id="traduccion-proceso" class="text-sm text-slate-300 font-normal leading-relaxed">
+                Todo quieto por ahora. Dale al boton de iniciar simulacion arriba para ver como los hilos empiezan a competir por los recursos compartidos sin bloquear el sistema.
+            </p>
+        </div>
+
+    </div>
+
+    <script>
+        const socket = io();
+
+        function iniciarSimulacion() {
+            const consoleDiv = document.getElementById('console');
+            consoleDiv.innerHTML = '<span class="text-indigo-400">> Disparando hilos independientes desde el backend...</span>';
+            document.getElementById('traduccion-proceso').innerText = "El backend acaba de arrancar los hilos en paralelo. Se gestiona la multiprogramacion.";
+            socket.emit('iniciar_simulacion');
+        }
+
+        socket.on('log_evento', function(data) {
+            const consoleDiv = document.getElementById('console');
+            let color = 'text-purple-200/80';
+            if (data.tipo === 'success') color = 'text-emerald-400 font-medium';
+            if (data.tipo === 'warning') color = 'text-amber-300 font-medium';
+            
+            consoleDiv.innerHTML += `<div class="${color}">> ${data.mensaje}</div>`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+
+            document.getElementById('traduccion-proceso').innerText = data.mensaje;
+        });
+
+        socket.on('estado_montacargas', function(data) {
+            const card = document.getElementById(`card-m-${data.id}`);
+            if (card) {
+                const estadoTxt = card.querySelector('.estado-txt');
+                const badge = card.querySelector('.badge-estado');
+                const dot = card.querySelector('.indicator-dot');
+                
+                estadoTxt.innerText = data.estado;
+
+                if (data.estado.includes('pasillo')) {
+                    badge.className = "px-3 py-1 text-xs font-semibold rounded-xl bg-emerald-950/80 text-emerald-300 border border-emerald-800/40 badge-estado";
+                    badge.innerText = "En Pasillo";
+                    dot.className = "w-3 h-3 rounded-full bg-emerald-400 shadow-lg shadow-emerald-500/50 indicator-dot animate-pulse";
+                } else if (data.estado.includes('cargando') || data.estado.includes('cargador')) {
+                    badge.className = "px-3 py-1 text-xs font-semibold rounded-xl bg-purple-900/80 text-purple-200 border border-purple-700/50 badge-estado";
+                    badge.innerText = "Cargando";
+                    dot.className = "w-3 h-3 rounded-full bg-purple-400 shadow-lg shadow-purple-500/50 indicator-dot animate-pulse";
+                } else if (data.estado.includes('Esperando')) {
+                    badge.className = "px-3 py-1 text-xs font-semibold rounded-xl bg-amber-950/80 text-amber-300 border border-amber-800/40 badge-estado";
+                    badge.innerText = "En Cola";
+                    dot.className = "w-3 h-3 rounded-full bg-amber-400 shadow-lg shadow-amber-500/50 indicator-dot";
+                } else if (data.estado.includes('Finalizado')) {
+                    badge.className = "px-3 py-1 text-xs font-semibold rounded-xl bg-blue-950/80 text-blue-300 border border-blue-800/40 badge-estado";
+                    badge.innerText = "Completado";
+                    dot.className = "w-3 h-3 rounded-full bg-blue-400 shadow-lg shadow-blue-500/50 indicator-dot";
+                } else {
+                    badge.className = "px-3 py-1 text-xs font-semibold rounded-xl bg-purple-950/80 text-purple-300 border border-purple-800/40 badge-estado";
+                    badge.innerText = "Operando";
+                    dot.className = "w-3 h-3 rounded-full bg-indigo-400 shadow-lg shadow-indigo-500/50 indicator-dot";
+                }
+            }
+        });
+    </script>
+</body>
+</html>
